@@ -161,16 +161,17 @@ do type([[ PUBLIC METHODS ]])
 		
 		function BetterAnimate:GetMoveDirection()
 			local PrimaryPart = self._PrimaryPart
-			return Utils.Vector3Round(
-					self.FastConfig.MoveDirection
-						or
-					(PrimaryPart.CFrame * (self._Class.DirectionAdjust[self._Class.Current] or CFrame.identity)):VectorToObjectSpace(PrimaryPart.AssemblyLinearVelocity.Unit * math.sign(self._Speed))
-			)
+			local MoveDirection = self.FastConfig.MoveDirection
+				or
+				(PrimaryPart.CFrame * (self._Class.DirectionAdjust[self._Class.Current] or CFrame.identity)):VectorToObjectSpace(PrimaryPart.AssemblyLinearVelocity * math.sign(self._Speed))
+			return --Utils.Vector3Round(
+				Utils.IsNaN(MoveDirection.Unit) and Vector3.zero or MoveDirection.Unit
+			--)
 		end
 
 		function BetterAnimate:GetInverse() -- Наверное стоит запихнуть в Step GetMoveDirection и получать уже потом из self
 			local MoveDirection = self:GetMoveDirection()
-			local MoveDirectionName = LocalUtils.GetMoveDirectionName(MoveDirection)
+			local MoveDirectionName = LocalUtils.GetMoveDirectionName(Utils.Vector3Round(MoveDirection))
 			if self._MoveDirection ~= MoveDirection and self._Events_Enabled["NewMoveDirection"] then
 				local Event = self.Events["NewMoveDirection"]
 				Event:Fires(MoveDirection, MoveDirectionName)
@@ -262,15 +263,16 @@ do type([[ PUBLIC METHODS ]])
 
 						local ClassCurrent = self._Class.Current
 						local AnimationTracks = #self._Animator:GetPlayingAnimationTracks()
-
-						Class.Text = `Class {ClassCurrent}`
-						Direction.Text = `Direction {self._MoveDirection}`
-						ID.Text = `ID {self._Animation.CurrentTrack and string.gsub(self._Animation.CurrentTrack.Animation.AnimationId, "%D", "") or nil}`
-						Timer.Text = `Timer {Utils.MaxDecimal(self._Class.Timer[ClassCurrent] or 0, 2)}`
-						Total.Text = `Total {AnimationTracks}`
-						Speed.Text = `Speed {Utils.MaxDecimal(self._Speed, 2)}`
-						State.Text = `State {self._State.Current}`
-						AnimationSpeed.Text = `AnimSpeed {Utils.MaxDecimal(self._Animation.CurrentSpeed or 0, 2)}`
+						local MoveDirection = self._MoveDirection or Vector3.zero
+						
+						Class.Text = `Class: {ClassCurrent}`
+						Direction.Text = `Direction: {Utils.MaxDecimal(MoveDirection.X, 1)}, {Utils.MaxDecimal(MoveDirection.Y, 1)}, {Utils.MaxDecimal(MoveDirection.Z, 1)},`
+						ID.Text = `ID: {self._Animation.CurrentTrack and string.gsub(self._Animation.CurrentTrack.Animation.AnimationId, "%D", "") or nil}`
+						Timer.Text = `Timer: {Utils.MaxDecimal(self._Class.Timer[ClassCurrent] or 0, 2)}`
+						Total.Text = `Total: {AnimationTracks}`
+						Speed.Text = `Speed: {Utils.MaxDecimal(self._Speed or 0, 2)}`
+						State.Text = `State: {self._State.Current}`
+						AnimationSpeed.Text = `AnimSpeed: {Utils.MaxDecimal(self._Animation.CurrentSpeed or 0, 2)}`
 					end
 				end))
 			end

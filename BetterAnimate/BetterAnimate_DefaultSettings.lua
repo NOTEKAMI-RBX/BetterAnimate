@@ -76,7 +76,7 @@ local Module = {
 			end),
 
 			[Enum.HumanoidStateType.Running.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
-				local Speed = self._Speed	
+				local Speed = self._Speed * (self._MoveDirection or Vector3.zero).Magnitude
 				local SpeedRange = self._Class.SpeedRange
 				
 				if Speed >= -math.huge and SpeedRange.Min > Speed then
@@ -86,7 +86,7 @@ local Module = {
 				elseif Speed >= SpeedRange.Max and math.huge > Speed then
 					self:PlayClassAnimation(`Run`, 0.2)
 				else
-					warn(`Over 9000!!!! {Speed}`) -- Just a meme phrase (that's mean you broke something)
+					warn(`Over 9000!!!! {Speed}`) -- Just a meme phrase (you broke something)
 				end
 			end),
 

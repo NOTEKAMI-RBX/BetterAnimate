@@ -10,6 +10,10 @@ function Module.GetUnique()
 	return Services.HttpService:GenerateGUID(false)
 end
 
+function Module.IsNaN(Value)
+	return Value ~= Value
+end
+
 function Module.CopyTableTo<From, To>(From: From, To: To): From & To
 	for I, Value in From do
 		if type(Value) == `table` and type(To[I]) == `table` then
