@@ -55,19 +55,4 @@ function Module.MaxDecimal(Number: number, Decimal: number): number
 	return tonumber(string.format(`%.{Decimal}f`, Number)) :: number
 end
 
-function Module.WaitForChildWhichIsA(Where: Instance, What: string, Recursive: boolean?, Timer: number?): Instance?
-	if not Where or type(What) ~= "string" then
-		return warn( `[{script}] {debug.info(1, `n`)} got incorrect data. Where: {Where} = {typeof(Where)}, What: {What} = {typeof(What)}`)
-	else
-		Timer = type(Timer) == "number" and Timer or 7
-		local TimePassed = 0
-		local Found = nil
-		repeat
-			Found = Where:FindFirstChildWhichIsA(What, Recursive)
-			TimePassed += task.wait() 
-		until Found or TimePassed >= Timer
-		return Found
-	end
-end
-
 return Module

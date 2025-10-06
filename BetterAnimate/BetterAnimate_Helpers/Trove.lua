@@ -26,7 +26,7 @@ export type Trove = {
 local Trove = {} :: Trove
 Trove.__index = Trove
 
-function Trove.New(Name: string?)
+function Trove.New()
 	local self = setmetatable({}, Trove)
 	self.Objects = {}
 	self.Cleaning = false
@@ -35,7 +35,7 @@ function Trove.New(Name: string?)
 	return self
 end
 
-function Trove:Extend(Name: string)
+function Trove:Extend()
 	return self:Add(Trove.New(
 		--self.Name or Serviecs.HttpService:GenerateGUID()
 		))

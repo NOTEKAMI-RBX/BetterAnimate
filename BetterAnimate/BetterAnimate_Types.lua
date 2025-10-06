@@ -49,7 +49,16 @@ export type BetterAnimate = {
 	Trove: Trove, -- If you want to attach something
 	
 	Events: {
-		[BetterAnimate_EventNames]: Unlim_Bindable,
+		--[[Hiiii]]
+		NewMoveDirection: Unlim_Bindable,
+		NewState: Unlim_Bindable,
+		NewAnimation: Unlim_Bindable,
+		
+		--[[KeyframeReached == MarkerReached]]
+		KeyframeReached: Unlim_Bindable,
+		MarkerReached: Unlim_Bindable,
+		
+		--[BetterAnimate_EventNames]: Unlim_Bindable,
 	},
 	
 	FastConfig: { -- Like FFlag to fix something
@@ -67,6 +76,7 @@ export type BetterAnimate = {
 		ToolAnimationPriority: Enum.AnimationPriority,
 		MoveDirection: Vector3?,
 		SetAnimationOnIdDifference: boolean?,
+		AssemblyLinearVelocity: Vector3?, -- Moving speed
 	},
 	
 	SimpleStateWrapper: (Function: (self: BetterAnimate)-> ())-> ((BetterAnimate, string)-> ()),
@@ -104,6 +114,7 @@ export type BetterAnimate = {
 
 	--[[Private]]
 	_Speed: number,
+	_AssemblyLinearVelocity: Vector3,
 	_MoveDirection: Vector3,
 	_PrimaryPart: BasePart,
 	_Animator: AnimationController | Humanoid,

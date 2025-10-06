@@ -3,23 +3,7 @@
 
 local Types = require(`./BetterAnimate_Types`)
 
-local function SimpleStateWrapper(Function: (self: Types.BetterAnimate)-> ())
-	
-	return function(self: Types.BetterAnimate, State: string)
-		--print(getmetatable(self))
-		Function(self)
-		
-		if State ~= Enum.HumanoidStateType.Jumping.Name 
-			and State ~= Enum.HumanoidStateType.Freefall.Name
-		then
-			self._Time.Jumped = 0
-		end
-	end
-end
-
 local Module = {	
-	
-	SimpleStateWrapper = SimpleStateWrapper,
 	
 	FastConfig = {
 		R6ClimbFix = true, -- For R6
@@ -35,7 +19,9 @@ local Module = {
 		AnimationPriority = Enum.AnimationPriority.Core,
 		ToolAnimationPriority = Enum.AnimationPriority.Action,
 		MoveDirection = nil,
+		AssemblyLinearVelocity = nil,
 		SetAnimationOnIdDifference = false,
+		AlwaysUseCurrentTransition = true,
 	},
 	
 	_Time = {
@@ -47,66 +33,70 @@ local Module = {
 	},
 	
 	_State = {
-		Deffered = { -- Prority to play
-			[Enum.HumanoidStateType.Jumping.Name] = true,
-		},
-		
 		Functions = {
-			[Enum.HumanoidStateType.Jumping.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
-				self:PlayClassAnimation("Jump")
-				self._Time.Jumped = os.clock()
-			end),
+			
+			[Enum.HumanoidStateType.Jumping.Name] = function(self: Types.BetterAnimate)
+				self._Time.Jumped = tick()
+				self:PlayClassAnimation(`Jump`)
+			end,
 
-			[Enum.HumanoidStateType.Freefall.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
-				if os.clock() - (self._Time.Jumped or os.clock()) >= self.FastConfig.WaitFallOnJump then	
+			[Enum.HumanoidStateType.Freefall.Name] = function(self: Types.BetterAnimate)
+				if self._Time.Jumped then 
+					if tick() - self._Time.Jumped >= (self.FastConfig.WaitFallOnJump or 0) then
+						self:PlayClassAnimation(`Fall`)
+					end
+				else
 					self:PlayClassAnimation(`Fall`)
 				end
-			end),
+			end,
 
-			[Enum.HumanoidStateType.GettingUp.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate) 
+			[Enum.HumanoidStateType.GettingUp.Name] = function(self: Types.BetterAnimate) 
 				self:StopClassAnimation()
-			end),	
+			end,	
 
-			[Enum.HumanoidStateType.FallingDown.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate) 
+			[Enum.HumanoidStateType.FallingDown.Name] = function(self: Types.BetterAnimate) 
 				self:StopClassAnimation()
-			end),	
+			end,	
 
-			[Enum.HumanoidStateType.PlatformStanding.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
+			[Enum.HumanoidStateType.PlatformStanding.Name] = function(self: Types.BetterAnimate)
 				self:StopClassAnimation()
-			end),
+			end,
 
-			[Enum.HumanoidStateType.Running.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
-				local Speed = self._Speed * (self._MoveDirection or Vector3.zero).Magnitude
+			[Enum.HumanoidStateType.Running.Name] = function(self: Types.BetterAnimate)
+				local AssemblyLinearVelocityMagnitude = (self._AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
+				local Speed = AssemblyLinearVelocityMagnitude * (self._MoveDirection or Vector3.zero).Magnitude
 				local SpeedRange = self._Class.SpeedRange
-				
-				if Speed >= -math.huge and SpeedRange.Min > Speed then
+				--print(Utils.MaxDecimal(AssemblyLinearVelocityMagnitude, 1), Speed)
+				self._Speed = Speed
+				--print(SpeedRange.Min, Speed)
+				if Speed > -math.huge and SpeedRange.Min >= Speed then
 					self:PlayClassAnimation(`Idle`, 0.2)
-				elseif Speed >= SpeedRange.Min and SpeedRange.Max > Speed then
+				elseif Speed > SpeedRange.Min and SpeedRange.Max >= Speed then
 					self:PlayClassAnimation(`Walk`, 0.2)
-				elseif Speed >= SpeedRange.Max and math.huge > Speed then
+				elseif Speed > SpeedRange.Max and math.huge >= Speed then
 					self:PlayClassAnimation(`Run`, 0.2)
 				else
-					warn(`Over 9000!!!! {Speed}`) -- Just a meme phrase (you broke something)
+					warn(`Over 9000!!!! {Speed}`) -- you broke something
 				end
-			end),
+			end,
 
-			[Enum.HumanoidStateType.Seated.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
+			[Enum.HumanoidStateType.Seated.Name] = function(self: Types.BetterAnimate)
 				self:PlayClassAnimation(`Sit`, 0.3)
-			end),
+			end,
 
-			[Enum.HumanoidStateType.Swimming.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
+			[Enum.HumanoidStateType.Swimming.Name] = function(self: Types.BetterAnimate)
 				if self._Speed > 3 then self:PlayClassAnimation(`Swim`, 0.4) return end
 				self:PlayClassAnimation(`Swimidle`, 0.4)
-			end),
+			end,
 
-			[Enum.HumanoidStateType.Climbing.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
+			[Enum.HumanoidStateType.Climbing.Name] = function(self: Types.BetterAnimate)
 				self:PlayClassAnimation(`Climb`, 0.2)
-			end),
+			end,
 
-			[Enum.HumanoidStateType.None.Name] = SimpleStateWrapper(function(self: Types.BetterAnimate)
+			[Enum.HumanoidStateType.None.Name] = function(self: Types.BetterAnimate)
 				self:PlayClassAnimation(`Temp`)
 				--self.ForceState = false
-			end),
+			end,
 		},
 	},
 
@@ -138,7 +128,7 @@ local Module = {
 		},
 		
 		SpeedRange = NumberRange.new(
-			0.4, 
+			0, 
 			9
 			--[[
 				-math.huge - 0.4 == Idle
