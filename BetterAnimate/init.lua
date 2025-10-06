@@ -275,6 +275,7 @@ do type([[ BETTERANIMATE ]])
 			Priority: Enum.AnimationPriority,
 			KeyframeFunction: ()-> (),
 			Emoting: boolean?,
+			Markers: {[string]: boolean},
 		}
 	end
 	
@@ -312,7 +313,7 @@ do type([[ BETTERANIMATE ]])
 			--[[
 				GetRandomClassAnimation ¯\_(ツ)_/¯
 			]]
-			function BetterAnimate.GetRandomClassAnimation(self: BetterAnimate, Class: BetterAnimate_AnimationClasses): (BetterAnimate_AnimationData, any)
+			function BetterAnimate.GetRandomClassAnimation(self: BetterAnimate, Class: BetterAnimate_AnimationClasses): (BetterAnimate_AnimationData?, any?)
 				local ClassAnimations = self._Class.Animations[Class]
 				local TotalWeight = 0
 				
@@ -327,18 +328,17 @@ do type([[ BETTERANIMATE ]])
 				else
 					warn(`[{script}] ClassAnimations of {Class} not found`)
 				end
-					
+				
 				if TotalWeight == 0 then
 					ClassAnimations = self._Class.Animations["Temp"]
 
 					for _, Table in (ClassAnimations or {}) do
 						TotalWeight += (Table.Weight or 0)
 					end
-
+					
 					if TotalWeight == 0 then
 						return
 					end
-
 					--Utils.Assert(TotalWeight ~= 0, `[{script}] Temp animation is empty`) -- Temp must have animation and weight
 				end
 				
@@ -666,10 +666,29 @@ do type([[ BETTERANIMATE ]])
 				self._Trove.Tool:Add(AnimationInstance)
 				self._Trove.Tool:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
 				self._Trove.Tool:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
+				
+				do -- Markers
+					for Marker in self._Animation.Markers do
+						self._Trove.Tool:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
+							self._Animation.KeyframeFunction(Marker, ...)
+						end))
+					end
+				end
+				
 				self._Trove.Tool:Add(function(ToolAnimationStopTransition) AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.ToolAnimationStopTransition or ToolAnimationStopTransition) end, self.FastConfig.ToolAnimationStopTransition)
 				AnimationTrack:Play(self.FastConfig.ToolAnimationPlayTransition)
 			end
 			
+			--[[
+				Add marker check for AnimationTrack
+				AnimationTrack:GetMarkerReachedSignal(Marker)
+			]]
+			function BetterAnimate.SetMarker(self: BetterAnimate, Marker: string, Enabled: boolean?): BetterAnimate
+				Utils.Assert(type(Marker) == `string`, `[{script}] string expected, got {typeof(Marker)}`)
+				self._Animation.Markers[Marker] = Enabled == true or nil
+				
+				return self
+			end
 			--[[
 				StopToolAnimation ¯\_(ツ)_/¯
 			]]
@@ -855,11 +874,11 @@ do type([[ BETTERANIMATE ]])
 				Main logic to play animation
 			]]
 			function BetterAnimate._SetAnimation(self: BetterAnimate, Class: --[[Just to be sure]] BetterAnimate_AnimationClasses?, TransitionTime: number, AnimationData: BetterAnimate_AnimationData, Index: any)
-
+				
 				if not AnimationData then
 					return
 				end
-
+				
 				local CurrentTrack = self._Animation.CurrentTrack
 				local AnimationInstance = AnimationData.Instance
 				
@@ -895,6 +914,15 @@ do type([[ BETTERANIMATE ]])
 
 						self._Trove.Animation:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
 						self._Trove.Animation:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
+						
+						do -- Markers
+							for Marker in self._Animation.Markers do
+								self._Trove.Animation:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
+									self._Animation.KeyframeFunction(Marker, ...)
+								end))
+							end
+						end
+						
 						self._Trove.Animation:Add(function(AnimationStopTransition) AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.AnimationStopTransition or AnimationStopTransition) end, self.FastConfig.AnimationStopTransition)
 						AnimationTrack:Play(TransitionTime)
 
@@ -913,11 +941,11 @@ do type([[ BETTERANIMATE ]])
 			--[[
 				Detect animation Markers (Keyframes)
 			]]
-			function BetterAnimate._AnimationEvent(self: BetterAnimate, Keyframe: string?)
-				if Keyframe then
+			function BetterAnimate._AnimationEvent(self: BetterAnimate, KeyframeOrMarker: string?, ...: string)
+				if KeyframeOrMarker then
 					if self._Events_Enabled["KeyframeReached"] then
 						local Event = self.Events["KeyframeReached"]
-						Event:Fires(Keyframe)
+						Event:Fires(KeyframeOrMarker, ...)
 					end
 				end
 			end
@@ -970,6 +998,7 @@ return {
 		
 		local self = setmetatable(Utils.CopyTableTo(Utils.DeepCopy(DefaultSettings), preself), BetterAnimate)
 		
+		self._Animation.Markers = {}
 		self._Animation.KeyframeFunction = function(...)
 			self:_AnimationEvent(...)
 		end
