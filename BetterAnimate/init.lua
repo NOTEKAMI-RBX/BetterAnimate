@@ -327,7 +327,7 @@ do type([[ BETTERANIMATE ]])
 				else
 					warn(`[{script}] ClassAnimations of {Class} not found`)
 				end
-				
+					
 				if TotalWeight == 0 then
 					ClassAnimations = self._Class.Animations["Temp"]
 
