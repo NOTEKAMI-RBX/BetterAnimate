@@ -331,15 +331,18 @@ do type([[ BETTERANIMATE ]])
 				if TotalWeight == 0 then
 					ClassAnimations = self._Class.Animations["Temp"]
 
-					for _, Table in ClassAnimations do
+					for _, Table in (ClassAnimations or {}) do
 						TotalWeight += (Table.Weight or 0)
 					end
 
-					return
+					if TotalWeight == 0 then
+						return
+					end
+
 					--Utils.Assert(TotalWeight ~= 0, `[{script}] Temp animation is empty`) -- Temp must have animation and weight
 				end
 				
-				local RandomWeight = RNG:NextInteger(1, TotalWeight)
+				local RandomWeight = RNG:NextNumber(1, TotalWeight)
 				local Weight, Index = 0, 1
 				
 				for I, Table in ClassAnimations do
