@@ -286,7 +286,7 @@ do type([[ BETTERANIMATE ]])
 				local PrimaryPart = self._PrimaryPart
 				local MoveDirection = self.FastConfig.MoveDirection
 					or
-					(PrimaryPart.CFrame * (self._Class.DirectionAdjust[self._Class.Current] or CFrame.identity)):VectorToObjectSpace(PrimaryPart.AssemblyLinearVelocity * math.sign(self._Speed))
+					(PrimaryPart.CFrame * (self._Class.DirectionAdjust[self._Class.Current] or CFrame.identity)):VectorToObjectSpace(PrimaryPart.AssemblyLinearVelocity)
 				return --Utils.Vector3Round(
 					Utils.IsNaN(MoveDirection.Unit) and Vector3.zero or MoveDirection.Unit
 				--)
@@ -335,7 +335,8 @@ do type([[ BETTERANIMATE ]])
 						TotalWeight += (Table.Weight or 0)
 					end
 
-					Utils.Assert(TotalWeight ~= 0, `[{script}] Temp animation is empty`) -- Temp must have animation and weight
+					return
+					--Utils.Assert(TotalWeight ~= 0, `[{script}] Temp animation is empty`) -- Temp must have animation and weight
 				end
 				
 				local RandomWeight = RNG:NextInteger(1, TotalWeight)
@@ -851,6 +852,10 @@ do type([[ BETTERANIMATE ]])
 				Main logic to play animation
 			]]
 			function BetterAnimate._SetAnimation(self: BetterAnimate, Class: --[[Just to be sure]] BetterAnimate_AnimationClasses?, TransitionTime: number, AnimationData: BetterAnimate_AnimationData, Index: any)
+
+				if not AnimationData then
+					return
+				end
 
 				local CurrentTrack = self._Animation.CurrentTrack
 				local AnimationInstance = AnimationData.Instance
