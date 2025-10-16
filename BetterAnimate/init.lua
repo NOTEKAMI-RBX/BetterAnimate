@@ -3,7 +3,7 @@
 --[[
 	Made by NOTEKAMI
 	https://devforum.roblox.com/t/2871306	
-	Version 1.3.1 [ NOTICE, I might forget sometimes to change the version numbers ]
+	Version 1.3.1.3 [ NOTICE, I might forget sometimes to change the version numbers ]
 	2025
 ]]
 
@@ -19,6 +19,7 @@ local Unlim_Bindable = require(Helpers_Folder:WaitForChild(`Unlim_Bindable`))
 
 local LocalUtils = {}
 local BetterAnimate = {}
+local DefaultSettings = {} :: typeof(BetterAnimate) -- for typecasting
 
 type([[📝 TYPES 📝]])
 export type Trove = typeof(Trove)
@@ -40,11 +41,179 @@ export type BetterAnimate_AnimationData = {
 Trove = Trove:Extend()
 
 --Settings
-local DefaultSettings = require(script:WaitForChild(`BetterAnimate_DefaultSettings`))
 local PresetsTagIndex = `BetterAnimate_Presets`
 local RNG = Random.new(os.clock())
 local AnimationDataMeta = {}
 --
+
+do type([[ DEFAULT SETTINGS ]])
+	
+	do --FastConfig
+		DefaultSettings.FastConfig = {}
+		
+		local FastConfig = DefaultSettings.FastConfig
+		FastConfig.R6ClimbFix = true
+		FastConfig.AnimationSpeedMultiplier = 1
+		FastConfig.AnimationPlayTransition = 0.1
+		FastConfig.AnimationStopTransition = 0.1
+		FastConfig.ToolAnimationPlayTransition = 0.1
+		FastConfig.ToolAnimationStopTransition = 0.1
+		FastConfig.WaitFallOnJump = 0.31
+		FastConfig.DefaultAnimationLength = 5
+		FastConfig.DefaultAnimationWeight = 10
+		FastConfig.AnimationPriority = Enum.AnimationPriority.Core
+		FastConfig.ToolAnimationPriority = Enum.AnimationPriority.Action
+		FastConfig.SetAnimationOnIdDifference = false
+		FastConfig.AlwaysUseCurrentTransition = true
+	end
+	
+	do -- _Time
+		DefaultSettings._Time = {}
+		
+		local Time = DefaultSettings._Time
+		Time.Debug = 0.06
+	end
+	
+	do -- _State
+		DefaultSettings._State = {}
+		
+		local State = DefaultSettings._State
+		State.Functions = {
+
+			[Enum.HumanoidStateType.Jumping.Name] = function(self: BetterAnimate)
+				self._Time.Jumped = tick()
+				self:PlayClassAnimation(`Jump`)
+			end,
+
+			[Enum.HumanoidStateType.Freefall.Name] = function(self: BetterAnimate)
+				if self._Time.Jumped then 
+					if tick() - self._Time.Jumped >= (self.FastConfig.WaitFallOnJump or 0) then
+						self:PlayClassAnimation(`Fall`)
+					end
+				else
+					self:PlayClassAnimation(`Fall`)
+				end
+			end,
+
+			[Enum.HumanoidStateType.GettingUp.Name] = function(self: BetterAnimate) 
+				self:StopClassAnimation()
+			end,	
+
+			[Enum.HumanoidStateType.FallingDown.Name] = function(self: BetterAnimate) 
+				self:StopClassAnimation()
+			end,	
+
+			[Enum.HumanoidStateType.PlatformStanding.Name] = function(self: BetterAnimate)
+				self:StopClassAnimation()
+			end,
+
+			[Enum.HumanoidStateType.Running.Name] = function(self: BetterAnimate)
+				local XZ_Speed = (self._AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude * (self._MoveDirection or Vector3.zero).Magnitude
+				local SpeedRange = self._Class.SpeedRange
+				
+				if XZ_Speed > -math.huge and SpeedRange.Min >= XZ_Speed then
+					self:PlayClassAnimation(`Idle`, 0.2)
+				elseif XZ_Speed > SpeedRange.Min and SpeedRange.Max >= XZ_Speed then
+					self:PlayClassAnimation(`Walk`, 0.2)
+				elseif XZ_Speed > SpeedRange.Max and math.huge >= XZ_Speed then
+					self:PlayClassAnimation(`Run`, 0.2)
+				else
+					warn(`Over 9000!!!! {XZ_Speed}`) -- you broke something
+				end
+			end,
+
+			[Enum.HumanoidStateType.Seated.Name] = function(self: BetterAnimate)
+				self:PlayClassAnimation(`Sit`, 0.3)
+			end,
+
+			[Enum.HumanoidStateType.Swimming.Name] = function(self: BetterAnimate)
+				if self._Speed > 3 then self:PlayClassAnimation(`Swim`, 0.4) return end
+				self:PlayClassAnimation(`Swimidle`, 0.4)
+			end,
+
+			[Enum.HumanoidStateType.Climbing.Name] = function(self: BetterAnimate)
+				self:PlayClassAnimation(`Climb`, 0.2)
+			end,
+
+			[Enum.HumanoidStateType.None.Name] = function(self: BetterAnimate)
+				self:PlayClassAnimation(`Temp`)
+				--self.ForceState = false
+			end,
+		}
+	end
+	
+	do -- _Class
+		DefaultSettings._Class = {}
+		
+		local Class = DefaultSettings._Class
+		
+		Class.Inverse = {
+			Walk = true,
+			Run = true,
+			Climb = true,
+		}
+		
+		Class.Emotable = {
+			Idle = true,
+			Emote = true,
+		}
+		
+		Class.AnimationSpeedAdjust = {
+			Walk = 6,
+			Run = 16,
+			Climb = 6,
+			Swim = 10,
+		}
+		
+		Class.DirectionAdjust = {
+			Swim = CFrame.Angles(math.rad(90), 0, 0),
+		}
+		
+		Class.SpeedRange = NumberRange.new(0, 9)
+		
+		Class.Timer = {
+			Idle = 0,
+		}
+		
+		Class.TimerMax = {
+			Idle = NumberRange.new(5, 8),
+		}
+		
+		Class.Animations = {}
+	end
+	
+	do -- _Inverse
+		DefaultSettings._Inverse = {}
+		
+		local Inverse = DefaultSettings._Inverse
+		
+		Inverse.Enabled = true
+		
+		Inverse.Directions = {
+			BackwardRight = true, 
+			BackwardLeft = true, 
+			Backward = true,
+			Down = true
+		}
+	end
+	
+	do -- _Animation
+		DefaultSettings._Animation = {}
+		
+		local Animation = DefaultSettings._Animation
+		
+		Animation.Markers = {}
+	end
+	
+	do -- _Events_Enabled
+		DefaultSettings._Events_Enabled = {
+			NewMoveDirection = true,
+			NewState = true,
+			NewAnimation = true,
+			KeyframeReached = true,
+		}
+	end
+end
 
 do type([[ LOCAL UTILS ]])
 	
@@ -52,7 +221,6 @@ do type([[ LOCAL UTILS ]])
 		Looking for ClassesPreset in modules (that have tag `BetterAnimate_Presets`)
 		
 		@return Module[Index]
-		
 	]]
 	function LocalUtils.GetClassesPreset(Index: any): ({ [BetterAnimate_AnimationClasses]: { [any]: BetterAnimate_AnimationData | string | number | Animation } }?)
 		for _, ModuleScript in Services.CollectionService:GetTagged(PresetsTagIndex) do
@@ -69,8 +237,11 @@ do type([[ LOCAL UTILS ]])
 		return
 	end
 	
-	--Return name of MoveDirection
+	--[[
+		Return name of MoveDirection (ForwardRight, ForwardLeft, etc...)
+	]]
 	function LocalUtils.GetMoveDirectionName(MoveDirection: Vector3): BetterAnimate_Directions
+		MoveDirection = Utils.Vector3Round(MoveDirection)
 		return (MoveDirection.Z < 0 and MoveDirection.X > 0 and `ForwardRight`)
 			or (MoveDirection.Z < 0 and MoveDirection.X < 0 and `ForwardLeft`)
 			or (MoveDirection.Z < 0 and MoveDirection.X == 0 and `Forward`)
@@ -260,6 +431,7 @@ do type([[ BETTERANIMATE ]])
 		}
 
 		BetterAnimate._Inverse = nil :: {
+			Current: boolean,
 			Enabled: boolean,
 			Directions: { [BetterAnimate_Directions]: boolean}
 		}
@@ -283,7 +455,19 @@ do type([[ BETTERANIMATE ]])
 		
 		do type([[ GET METHODS ]])
 			
-			function BetterAnimate.GetMoveDirection(self: BetterAnimate): Vector3
+			--[[
+				[❗Deprecated❗], use :GetLocalMoveDirection() instead
+				GetMoveDirection ¯\_(ツ)_/¯
+			]]
+			@deprecated function BetterAnimate.GetMoveDirection(self: BetterAnimate): Vector3
+				return self:GetLocalMoveDirection()
+			end
+			
+			--[[
+				GetLocalMoveDirection
+				For example: PrimaryPart.CFrame:VectorToObjectSpace(Humanoid.MoveDirection)
+			]]
+			function BetterAnimate.GetLocalMoveDirection(self: BetterAnimate): Vector3
 				local PrimaryPart = self._PrimaryPart
 				local MoveDirection = self.FastConfig.MoveDirection
 					or
@@ -292,22 +476,39 @@ do type([[ BETTERANIMATE ]])
 					Utils.IsNaN(MoveDirection.Unit) and Vector3.zero or MoveDirection.Unit
 				--)
 			end
-
-			function BetterAnimate.GetInverse(self: BetterAnimate): number -- Наверное стоит запихнуть в Step GetMoveDirection и получать уже потом из self
+			
+			--[[
+				Return Vector3 MoveDirection in Global space
+			]]
+			function BetterAnimate.GetGlobalMoveDirection(self: BetterAnimate): Vector3
+				local PrimaryPart = self._PrimaryPart
+				local MoveDirection = self.FastConfig.MoveDirection or self._PrimaryPart.AssemblyLinearVelocity
+				return Utils.IsNaN(MoveDirection.Unit) and Vector3.zero or MoveDirection.Unit
+			end
+			
+			--[[
+				[❗Deprecated❗], use :IsInverse() instead
+				Used to get number for Animation speed (1 or -1)
+			]]
+			@deprecated function BetterAnimate.GetInverse(self: BetterAnimate): number
 				local MoveDirection = self:GetMoveDirection()
 				local MoveDirectionName = LocalUtils.GetMoveDirectionName(Utils.Vector3Round(MoveDirection))
-				if self._MoveDirection ~= MoveDirection and self._Events_Enabled["NewMoveDirection"] then
-					local Event = self.Events["NewMoveDirection"]
-					Event:Fires(MoveDirection, MoveDirectionName)
-				end
+				--if self._MoveDirection ~= MoveDirection and self._Events_Enabled["NewMoveDirection"] then
+				--	local Event = self.Events["NewMoveDirection"]
+				--	Event:Fires(MoveDirection, MoveDirectionName)
+				--end
 				
-				self._MoveDirection = MoveDirection
+				--self._MoveDirection = MoveDirection
 
 				return self._Inverse.Enabled 
 					and self._Inverse.Directions[MoveDirectionName] 
 					and self._Class.Inverse[self._Class.Current] 
 					and -1 
 					or 1
+			end
+			
+			function BetterAnimate.IsInverse(self: BetterAnimate): number
+				return self._Inverse.Current == true
 			end
 			
 			--[[
@@ -420,7 +621,7 @@ do type([[ BETTERANIMATE ]])
 				local ForcedState
 
 				repeat
-					ForcedState = `{State}{math.random()}` -- 2147483647
+					ForcedState = `{State}{RNG:NextInteger(1, 999999999999)}`
 				until self._State.Forced ~= ForcedState
 
 				self._State.Forced = ForcedState
@@ -601,7 +802,7 @@ do type([[ BETTERANIMATE ]])
 
 		do type([[ ETC METHODS ]])
 			--[[
-				Сomplicated function, i don't recommend using it if you don't know how it works.
+				Сomplicated function, ❗i don't recommend using it if you don't know how it works❗.
 				Use :SetClassesPreset() or :SetClassPreset() instead
 				
 				This function is used to add/override/remove animation
@@ -664,7 +865,7 @@ do type([[ BETTERANIMATE ]])
 				AnimationTrack.Priority = self.FastConfig.ToolAnimationPriority
 				
 				self._Trove.Tool:Add(AnimationInstance)
-				self._Trove.Tool:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
+				--self._Trove.Tool:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
 				self._Trove.Tool:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
 				
 				do -- Markers
@@ -680,15 +881,25 @@ do type([[ BETTERANIMATE ]])
 			end
 			
 			--[[
+				[❗DEPRECATED❗], use :SetMarkerCheckEnabled() instead
 				Add marker check for AnimationTrack
 				AnimationTrack:GetMarkerReachedSignal(Marker)
 			]]
-			function BetterAnimate.SetMarker(self: BetterAnimate, Marker: string, Enabled: boolean?): BetterAnimate
+			@deprecated function BetterAnimate.SetMarker(self: BetterAnimate, Marker: string, Enabled: boolean?): BetterAnimate
+				return self:SetMarkerCheckEnabled(Marker, Enabled)
+			end
+			
+			--[[
+				Add marker check for AnimationTrack
+				AnimationTrack:GetMarkerReachedSignal(Marker)
+			]]
+			function BetterAnimate.SetMarkerCheckEnabled(self: BetterAnimate, Marker: string, Enabled: boolean?): BetterAnimate
 				Utils.Assert(type(Marker) == `string`, `[{script}] string expected, got {typeof(Marker)}`)
 				self._Animation.Markers[Marker] = Enabled == true or nil
-				
+
 				return self
 			end
+			
 			--[[
 				StopToolAnimation ¯\_(ツ)_/¯
 			]]
@@ -774,10 +985,10 @@ do type([[ BETTERANIMATE ]])
 			function BetterAnimate.Step(self: BetterAnimate, Dt: number, StateNew: BetterAnimate_AnimationClasses): ()
 
 				do -- Streaming & Died check
-					if not self._PrimaryPart 
-						or not self._PrimaryPart.Parent
+					if not self._PrimaryPart
+						or not self._PrimaryPart:IsDescendantOf(game)-- self._PrimaryPart.Parent
 						or not self._Animator
-						or not self._Animator.Parent
+						or not self._Animator:IsDescendantOf(game)
 						or not getmetatable(self.Trove)
 					then
 						return
@@ -789,12 +1000,6 @@ do type([[ BETTERANIMATE ]])
 				local StateForced = self._State.Forced and string.gsub(self._State.Forced, "%d", "") or nil
 				local StateOld = self._State.Current
 				StateNew = StateForced or StateNew
-
-				do -- Speed of character
-					local AssemblyLinearVelocity = self.FastConfig.AssemblyLinearVelocity or self._PrimaryPart.AssemblyLinearVelocity
-					self._AssemblyLinearVelocity = AssemblyLinearVelocity
-					self._Speed = Utils.MaxDecimal(AssemblyLinearVelocity.Magnitude, 1)
-				end
 
 				do -- New state event
 					if StateNew ~= StateOld and self._Events_Enabled["NewState"] then
@@ -820,6 +1025,12 @@ do type([[ BETTERANIMATE ]])
 					end
 				end
 				
+				do -- Moving speed
+					local AssemblyLinearVelocity = self.FastConfig.AssemblyLinearVelocity or self._PrimaryPart.AssemblyLinearVelocity
+					self._AssemblyLinearVelocity = AssemblyLinearVelocity
+					self._Speed = Utils.MaxDecimal(AssemblyLinearVelocity.Magnitude, 1)
+				end
+				
 				do -- State function
 					local StateFunction = self._State.Functions[StateNew]
 					if StateFunction then
@@ -831,7 +1042,26 @@ do type([[ BETTERANIMATE ]])
 					local CurrentTrack = self._Animation.CurrentTrack
 					local CurrentClass = self._Class.Current
 					if CurrentTrack then
-						local Inverse = self:GetInverse() 
+						
+						local Inverse do --Inverse logic
+							local MoveDirection = self:GetLocalMoveDirection()
+							local MoveDirectionName = LocalUtils.GetMoveDirectionName(MoveDirection)
+							if self._MoveDirection ~= MoveDirection and self._Events_Enabled["NewMoveDirection"] then
+								local Event = self.Events["NewMoveDirection"]
+								Event:Fires(MoveDirection, MoveDirectionName)
+							end
+
+							self._MoveDirection = MoveDirection
+
+							Inverse = self._Inverse.Enabled 
+								and self._Inverse.Directions[MoveDirectionName] 
+								and self._Class.Inverse[self._Class.Current] 
+								and -1 
+								or 1
+						end
+						
+						self._Inverse.Current = Inverse < 0
+						
 						local AnimationSpeed = (self._Animation.Emoting and 1 * self.FastConfig.AnimationSpeedMultiplier) 
 							or (
 								(
@@ -843,10 +1073,6 @@ do type([[ BETTERANIMATE ]])
 								* Inverse 
 								/ (self.FastConfig.R6ClimbFix and CurrentClass == `Climb` and self._RigType == `R6` and 2 or 1)
 							)
-						--if math.sign(AnimationSpeed) ~= math.sign(self._Animation.CurrentSpeed or 0) then
-						--	print(AnimationSpeed)
-						--	CurrentTrack:AdjustSpeed(AnimationSpeed)
-						--end
 
 						self._Animation.CurrentSpeed = AnimationSpeed
 						CurrentTrack:AdjustSpeed(AnimationSpeed)
@@ -912,7 +1138,7 @@ do type([[ BETTERANIMATE ]])
 						self._Animation.CurrentTrack = AnimationTrack
 						CurrentTrack = AnimationTrack
 
-						self._Trove.Animation:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
+						--self._Trove.Animation:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
 						self._Trove.Animation:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
 						
 						do -- Markers
@@ -959,9 +1185,12 @@ do type([[ ETC ]])
 			return true, (Table :: BetterAnimate):Destroy()
 		end
 	end)
+	
+	table.freeze(LocalUtils)
+	table.freeze(BetterAnimate)
 end
 
-return {
+return table.freeze{
 	New = function(Character: Model)--: BetterAnimate
 		local PrimaryPart = Character.PrimaryPart
 		local Humanoid = Character:FindFirstChildWhichIsA(`Humanoid`, true)
@@ -998,19 +1227,9 @@ return {
 		
 		local self = setmetatable(Utils.CopyTableTo(Utils.DeepCopy(DefaultSettings), preself), BetterAnimate)
 		
-		self._Animation.Markers = {}
 		self._Animation.KeyframeFunction = function(...)
 			self:_AnimationEvent(...)
 		end
-		
-		self._Class.Animations = {}
-		--CharacterTrove:Add(Character.DescendantAdded:Connect(function()
-		--	self:FixCenterOfMass()
-		--end))
-		
-		--CharacterTrove:Add(Character.DescendantRemoving:Connect(function()
-		--	self:FixCenterOfMass()
-		--end))
 		
 		return self
 	end,

@@ -1,13 +1,15 @@
 --!native
 --!optimize 2
 
+--[[❗DEPRECATED SUBMODULE❗, DEFAULTSETTING LOCATED IN BETTERANIMATE]]
+warn(`[{script}] is deprecated`)
+
 local Types = require(`./BetterAnimate_Types`)
 
 local Module = {	
 	
 	FastConfig = {
 		R6ClimbFix = true, -- For R6
-		EmoteIngnoreEmotable = false,
 		AnimationSpeedMultiplier = 1,
 		AnimationPlayTransition = 0.1,
 		AnimationStopTransition = 0.1,
@@ -26,10 +28,6 @@ local Module = {
 	
 	_Time = {
 		Debug = 0.06,
-		--AnimationStop = 0.1,
-		--FallOnJump = 0.31,
-		--Fall = 0.1,
-		--AnimationTransition = 0.1,
 	},
 	
 	_State = {
@@ -63,11 +61,8 @@ local Module = {
 			end,
 
 			[Enum.HumanoidStateType.Running.Name] = function(self: Types.BetterAnimate)
-				local AssemblyLinearVelocityMagnitude = (self._AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
-				local Speed = AssemblyLinearVelocityMagnitude * (self._MoveDirection or Vector3.zero).Magnitude
 				local SpeedRange = self._Class.SpeedRange
-				--print(Utils.MaxDecimal(AssemblyLinearVelocityMagnitude, 1), Speed)
-				self._Speed = Speed
+				local Speed = self._Speed
 				--print(SpeedRange.Min, Speed)
 				if Speed > -math.huge and SpeedRange.Min >= Speed then
 					self:PlayClassAnimation(`Idle`, 0.2)
