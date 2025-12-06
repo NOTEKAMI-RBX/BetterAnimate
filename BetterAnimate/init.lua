@@ -20,6 +20,7 @@ local Unlim_Bindable = require(Helpers_Folder:WaitForChild(`Unlim_Bindable`))
 local LocalUtils = {}
 local BetterAnimate = {}
 local DefaultSettings = {} :: typeof(BetterAnimate) -- for typecasting
+local AnimationManager = {}
 
 type([[📝 TYPES 📝]])
 export type Trove = typeof(Trove)
@@ -27,6 +28,7 @@ export type Destroyer = typeof(Destroyer) --Destroyer
 export type LocalUtils = typeof(LocalUtils)
 export type Unlim_Bindable = Unlim_Bindable.Unlim_Bindable
 export type Unlim_Bindable_Start = typeof(Unlim_Bindable)
+export type AnimationManager = typeof(AnimationManager)
 export type BetterAnimate = typeof(BetterAnimate) --BetterAnimate
 export type BetterAnimate_AnimationClasses = "Walk" | "Run" | "Swim" | "Swimidle" | "Jump" | "Fall" | "Climb" | "Sit" | "Idle" | "Emote" | "Temp" --| string
 export type BetterAnimate_Directions = "ForwardRight" | "ForwardLeft" | "BackwardRight" | "BackwardLeft" | "Right" | "Left" | "Backward" | "Forward" | "Up" | "Down" | "None"
@@ -39,6 +41,7 @@ export type BetterAnimate_AnimationData = {
 }
 
 Trove = Trove:Extend()
+local TroveMetatable = getmetatable(Trove)
 
 --Settings
 local PresetsTagIndex = `BetterAnimate_Presets`
@@ -507,6 +510,9 @@ do type([[ BETTERANIMATE ]])
 					or 1
 			end
 			
+			--[[
+				Check if current animation using inverse
+			]]
 			function BetterAnimate.IsInverse(self: BetterAnimate): number
 				return self._Inverse.Current == true
 			end
@@ -564,8 +570,15 @@ do type([[ BETTERANIMATE ]])
 			
 			--[[ Enable debug ]]
 			function BetterAnimate.SetDebugEnabled(self: BetterAnimate, Enabled: boolean?): BetterAnimate
-
-				self._Trove.Debug:Clear(true)
+				
+				local DebugTrove = self._Trove.Debug
+				
+				if getmetatable(DebugTrove) ~= TroveMetatable then
+					DebugTrove = self._Trove.Main:Extend()
+					self._Trove.Debug = DebugTrove
+				end
+				
+				DebugTrove:Clear(true)
 
 				if Enabled then
 					local PrimaryPart = self._PrimaryPart
@@ -574,7 +587,7 @@ do type([[ BETTERANIMATE ]])
 
 					local _, Size = Character:GetBoundingBox()
 
-					local DebugBillboard = self._Trove.Debug:Clone(script.BetterAnimate_Debug)
+					local DebugBillboard = DebugTrove:Clone(script:WaitForChild(`BetterAnimate_Debug`))
 					DebugBillboard.StudsOffset = Vector3.new(0, Size.Y / 2 + 1.5, 0)
 					DebugBillboard.Enabled = true
 					DebugBillboard.Parent = PrimaryPart
@@ -589,7 +602,7 @@ do type([[ BETTERANIMATE ]])
 					local State = Main:FindFirstChild("State")
 					local AnimationSpeed = Main:FindFirstChild(`AnimationSpeed`)
 
-					self._Trove.Debug:Add(task.defer(function()
+					DebugTrove:Add(task.defer(function()
 
 						while task.wait(self._Time.Debug) do
 
@@ -801,6 +814,139 @@ do type([[ BETTERANIMATE ]])
 		end
 
 		do type([[ ETC METHODS ]])
+			
+			do
+				AnimationManager._Trove = nil :: Trove
+				AnimationManager._AnimationTrack = nil :: AnimationTrack
+				AnimationManager._EndedMethod = nil :: ()-> ()?
+				AnimationManager._DidLoopMethod = nil :: ()-> ()?
+				AnimationManager.__index = AnimationManager
+				
+				do type([[ GET ]])
+					function AnimationManager.GetSpeed(self: AnimationManager)
+						return self._AnimationTrack.Speed
+					end
+					
+					function AnimationManager.GetLength(self: AnimationManager)
+						return self._AnimationTrack.Length
+					end
+					
+					function AnimationManager.GetIsPlaying(self: AnimationManager)
+						return self._AnimationTrack.IsPlaying
+					end
+				end
+				
+				do type([[ SET ]])
+					function AnimationManager.SetPrority(self: AnimationManager, Priortiy: Enum.AnimationPriority)
+						self._AnimationTrack.Priority = Priortiy
+						
+						return self
+					end
+					
+					function AnimationManager.SetLooped(self: AnimationManager, Looped: boolean)
+						self._AnimationTrack.Looped = Looped
+						
+						return self
+					end
+					
+					function AnimationManager.SetOnEnded(self: AnimationManager, EndedMethod: ()-> ())
+						Utils.Assert(type(EndedMethod) == `function`, `[{script}] Function expected, got {typeof(EndedMethod)}`)
+						self._EndedMethod = EndedMethod
+
+						return self
+					end
+					
+					function AnimationManager.SetOnDidLoop(self: AnimationManager, DidLoopMethod: ()-> ())
+						Utils.Assert(type(DidLoopMethod) == `function`, `[{script}] Function expected, got {typeof(DidLoopMethod)}`)
+						self._DidLoopMethod = DidLoopMethod
+
+						return self
+					end
+				end
+				
+				do type([[ ETC ]])
+					function AnimationManager.Play(self: AnimationManager, FadeTime: number?, Weight: number?, Speed: number?)
+						self._AnimationTrack:Play(FadeTime, Weight, Speed)
+						
+						return self
+					end
+					
+					function AnimationManager.Stop(self: AnimationManager, FadeTime: number?)
+						self._AnimationTrack:Stop(FadeTime)
+						
+						return self
+					end
+					
+					function AnimationManager.AdjustSpeed(self: AnimationManager, Speed: number)
+						self._AnimationTrack:AdjustSpeed(Speed)
+						
+						return self
+					end
+					
+					function AnimationManager.AdjustWeight(self: AnimationManager, Weight: number)
+						self._AnimationTrack:AdjustWeight(Weight)
+						
+						return self
+					end
+					 
+					function AnimationManager.Destroy(self: AnimationManager)
+						self:Stop()
+						self._Trove:Destroy()
+						setmetatable(self, nil)
+					end
+					
+					Destroyer.AddTableDestroyMethod(`{AnimationManager}`, function(Table)
+						if getmetatable(Table) == AnimationManager then
+							return true, (Table :: AnimationManager):Destroy()
+						end
+					end)
+					
+					table.freeze(AnimationManager)
+				end
+			end
+			
+			--[[
+				Create and manually manipulate animation
+			]]
+			function BetterAnimate.CreateAnimationManager(self: BetterAnimate, AnimationData: BetterAnimate_AnimationData | string | number | Animation)
+				local BetterAnimateTrove = self._Trove.Main
+				local ManagerTrove = BetterAnimateTrove:Extend()
+				
+				local AnimationData = LocalUtils.GetAnimationData(AnimationData, self.FastConfig.DefaultAnimationWeight)
+				local AnimationInstance = AnimationData.Instance
+				local AnimationTrack = ManagerTrove:Add(self._Animator:LoadAnimation(AnimationInstance)) :: AnimationTrack --AnimationTable.AnimationTrack
+				ManagerTrove:Add(AnimationInstance, function() setmetatable(AnimationData, nil) end)
+				
+				local Manager = setmetatable({}, AnimationManager) :: AnimationManager
+				Manager._Trove = ManagerTrove
+				Manager._AnimationTrack = AnimationTrack
+				BetterAnimateTrove:Add(Manager)
+				
+				ManagerTrove:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
+
+				do -- Markers
+					for Marker in self._Animation.Markers do
+						ManagerTrove:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
+							self._Animation.KeyframeFunction(Marker, ...)
+						end))
+					end
+				end
+				
+				ManagerTrove:Add(AnimationTrack.DidLoop:Connect(function()
+					if Manager._DidLoopMethod then
+						Manager._DidLoopMethod()
+					end
+				end))
+				
+				ManagerTrove:Add(AnimationTrack.Ended:Connect(function()
+					if Manager._EndedMethod then
+						Manager._EndedMethod()
+					end
+				end))
+				
+				return Manager
+			end
+			
 			--[[
 				Сomplicated function, ❗i don't recommend using it if you don't know how it works❗.
 				Use :SetClassesPreset() or :SetClassPreset() instead
@@ -853,6 +999,7 @@ do type([[ BETTERANIMATE ]])
 			end
 			
 			--[[
+				[❔ You can use CreateAnimationManager insetead ❔]
 				PlayToolAnimation ¯\_(ツ)_/¯
 			]]
 			function BetterAnimate.PlayToolAnimation(self: BetterAnimate, AnimationData: BetterAnimate_AnimationData | string | number | Animation)
@@ -864,19 +1011,29 @@ do type([[ BETTERANIMATE ]])
 				
 				AnimationTrack.Priority = self.FastConfig.ToolAnimationPriority
 				
-				self._Trove.Tool:Add(AnimationInstance)
-				--self._Trove.Tool:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
-				self._Trove.Tool:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
+				local ToolTrove = self._Trove.Tool
+				
+				if getmetatable(ToolTrove) ~= TroveMetatable then
+					ToolTrove = self._Trove.Main:Extend()
+					self._Trove.Tool = ToolTrove
+				end
+				
+				ToolTrove:Add(AnimationInstance)
+				ToolTrove:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
 				
 				do -- Markers
 					for Marker in self._Animation.Markers do
-						self._Trove.Tool:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
+						ToolTrove:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
 							self._Animation.KeyframeFunction(Marker, ...)
 						end))
 					end
 				end
 				
-				self._Trove.Tool:Add(function(ToolAnimationStopTransition) AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.ToolAnimationStopTransition or ToolAnimationStopTransition) end, self.FastConfig.ToolAnimationStopTransition)
+				ToolTrove:Add(function(ToolAnimationStopTransition)
+					AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition 
+						and self.FastConfig.ToolAnimationStopTransition or ToolAnimationStopTransition) 
+				end, self.FastConfig.ToolAnimationStopTransition)
+				
 				AnimationTrack:Play(self.FastConfig.ToolAnimationPlayTransition)
 			end
 			
@@ -890,6 +1047,7 @@ do type([[ BETTERANIMATE ]])
 			end
 			
 			--[[
+				[❗ AFFECTS ONLY BEFORE CREATING ANY ANIMATION ❗]
 				Add marker check for AnimationTrack
 				AnimationTrack:GetMarkerReachedSignal(Marker)
 			]]
@@ -904,10 +1062,14 @@ do type([[ BETTERANIMATE ]])
 				StopToolAnimation ¯\_(ツ)_/¯
 			]]
 			function BetterAnimate.StopToolAnimation(self: BetterAnimate)
-				self._Trove.Tool:Clear(true)
+				local ToolTrove = self._Trove.Tool
+				if getmetatable(ToolTrove) == TroveMetatable then
+					ToolTrove:Clear(true)
+				end
 			end
 			
 			--[[
+				[❔ You can use CreateAnimationManager insetead ❔]
 				PlayEmote ¯\_(ツ)_/¯
 			]]
 			function BetterAnimate.PlayEmote(self: BetterAnimate, AnimationData: BetterAnimate_AnimationData | string | number | Animation, TransitionTime: number?)
@@ -919,11 +1081,19 @@ do type([[ BETTERANIMATE ]])
 					
 					local AnimationData = LocalUtils.GetAnimationData(AnimationData, self.FastConfig.DefaultAnimationWeight)
 					local _, AnimationTrack, AnimationLenght = self:_SetAnimation(`Emote`, TransitionTime, AnimationData)
-					self._Trove.Emote:Add(AnimationTrack.Ended:Connect(function()
+					
+					local EmoteTrove = self._Trove.Emote
+					
+					if getmetatable(EmoteTrove) ~= TroveMetatable then
+						EmoteTrove = self._Trove.Main:Extend()
+						self._Trove.Emote = EmoteTrove
+					end
+					
+					EmoteTrove:Add(AnimationTrack.Ended:Connect(function()
 						self:StopEmote()
 					end))
 					
-					self._Trove.Emote:Add(AnimationData.Instance, function(AnimationStopTransition) 
+					EmoteTrove:Add(AnimationData.Instance, function(AnimationStopTransition) 
 						AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.AnimationStopTransition or AnimationStopTransition)
 						--self:PlayClassAnimation(self._Class.Current)
 						setmetatable(AnimationData, nil)
@@ -938,7 +1108,12 @@ do type([[ BETTERANIMATE ]])
 			]]
 			function BetterAnimate.StopEmote(self: BetterAnimate)
 				self._Animation.Emoting = false
-				self._Trove.Emote:Clear(true)
+				
+				local EmoteTrove = self._Trove.Emote
+				if getmetatable(EmoteTrove) == TroveMetatable then
+					EmoteTrove:Clear(true)
+				end
+				
 			end
 			
 			--[[
@@ -989,7 +1164,7 @@ do type([[ BETTERANIMATE ]])
 						or not self._PrimaryPart:IsDescendantOf(game)-- self._PrimaryPart.Parent
 						or not self._Animator
 						or not self._Animator:IsDescendantOf(game)
-						or not getmetatable(self.Trove)
+						or getmetatable(self.Trove) ~= TroveMetatable
 					then
 						return
 					end
@@ -1083,7 +1258,7 @@ do type([[ BETTERANIMATE ]])
 			end
 
 			function BetterAnimate.Destroy(self: BetterAnimate)
-				if getmetatable(self._Trove.Main) then
+				if getmetatable(self._Trove.Main) == TroveMetatable then
 					self._Trove.Main:Destroy()	
 				end
 
@@ -1219,10 +1394,10 @@ return table.freeze{
 		
 		preself._Trove = {
 			Main = CharacterTrove,
-			Debug = CharacterTrove:Extend(),
+			--Debug = CharacterTrove:Extend(),
 			Animation = CharacterTrove:Extend(),
-			Emote = CharacterTrove:Extend(),
-			Tool = CharacterTrove:Extend(),
+			--Emote = CharacterTrove:Extend(),
+			--Tool = CharacterTrove:Extend(),
 		}
 		
 		local self = setmetatable(Utils.CopyTableTo(Utils.DeepCopy(DefaultSettings), preself), BetterAnimate)

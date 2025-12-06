@@ -65,7 +65,7 @@ function Trove:Add<Object>(Object, ...: any): Object
 	
 	local CheckExist = self.Objects[Object]
 	if CheckExist then
-		return warn(`[Trove] Trying to add existing Object`, Object)
+		return warn(`[Trove] Trying to add existing Object`, Object, {debug.traceback()})
 	else
 		self.Objects[Object] = {...}
 		return Object, function() self:Remove(Object) end
