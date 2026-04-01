@@ -828,7 +828,7 @@ do type([[ BETTERANIMATE ]])
 						return self._AnimationTrack.IsPlaying
 					end
 					
-					function AnimationManager.GetPrority(self: AnimationManager)
+					function AnimationManager.GetPriority(self: AnimationManager)
 						return self._AnimationTrack.Priority
 					end
 					
@@ -838,8 +838,8 @@ do type([[ BETTERANIMATE ]])
 				end
 				
 				do type([[ SET ]])
-					function AnimationManager.SetPrority(self: AnimationManager, Priortiy: Enum.AnimationPriority)
-						self._AnimationTrack.Priority = Priortiy
+					function AnimationManager.SetPriority(self: AnimationManager, Priority: Enum.AnimationPriority)
+						self._AnimationTrack.Priority = Priority
 						
 						return self
 					end
