@@ -3,7 +3,7 @@
 --[[
 	Made by NOTEKAMI
 	https://devforum.roblox.com/t/2871306	
-	Version 1.3.1.3 [ NOTICE, I might forget sometimes to change the version numbers ]
+	Version 1.3.1.5 [ NOTICE, I might forget sometimes to change the version numbers ]
 	2025
 ]]
 
@@ -32,7 +32,7 @@ export type AnimationManager = typeof(AnimationManager)
 export type BetterAnimate = typeof(BetterAnimate) --BetterAnimate
 export type BetterAnimate_AnimationClasses = "Walk" | "Run" | "Swim" | "Swimidle" | "Jump" | "Fall" | "Climb" | "Sit" | "Idle" | "Emote" | "Temp" --| string
 export type BetterAnimate_Directions = "ForwardRight" | "ForwardLeft" | "BackwardRight" | "BackwardLeft" | "Right" | "Left" | "Backward" | "Forward" | "Up" | "Down" | "None"
-export type BetterAnimate_EventNames = "NewMoveDirection" | "NewState" | "NewAnimation" | "KeyframeReached" | "MarkerReached"
+export type BetterAnimate_EventNames = "NewMoveDirection" | "NewState" | "NewAnimation" | "KeyframeReached" | "MarkerReached" | "NewClass"
 export type BetterAnimate_AnimationData = {
 	ID: number | string?,
 	Instance: Animation?,
@@ -214,6 +214,7 @@ do type([[ DEFAULT SETTINGS ]])
 			NewState = true,
 			NewAnimation = true,
 			KeyframeReached = true,
+			NewClass = true,
 		}
 	end
 end
@@ -278,7 +279,7 @@ do type([[ LOCAL UTILS ]])
 				local AnimationData = setmetatable(Utils.DeepCopy(AnimationData) :: BetterAnimate_AnimationData, AnimationDataMeta)
 				local AnimationLink = `rbxassetid://{string.gsub(`{AnimationData.ID or (AnimationData.Instance and AnimationData.Instance.AnimationId) or ``}`, "%D", "")}`
 				local Animation = Instance.new(`Animation`)
-				Animation.Name = `{script}_AnimationFromTable_{math.random()}`
+				Animation.Name = `{script}_AnimationFromTable_{AnimationData}`
 				Animation.AnimationId = AnimationLink
 				--Animation.Parent = game:GetService(`Lighting`) -- Testing
 				AnimationData.ID = AnimationLink
@@ -293,7 +294,7 @@ do type([[ LOCAL UTILS ]])
 			local AnimationLink = `rbxassetid://{AnimationData :: number}`
 			local AnimationData = setmetatable({} :: BetterAnimate_AnimationData, AnimationDataMeta)
 			local Animation = Instance.new(`Animation`)
-			Animation.Name = `{script}_AnimationFromNumber_{math.random()}`
+			Animation.Name = `{script}_AnimationFromNumber_{AnimationData}`
 			Animation.AnimationId = AnimationLink
 			--Animation.Parent = game:GetService(`Lighting`) -- Testing
 			AnimationData.ID = AnimationLink
@@ -305,7 +306,7 @@ do type([[ LOCAL UTILS ]])
 			local AnimationLink = `rbxassetid://{string.gsub(`{AnimationData :: string}`, "%D", "")}`
 			local AnimationData = setmetatable({} :: BetterAnimate_AnimationData, AnimationDataMeta)
 			local Animation = Instance.new(`Animation`)
-			Animation.Name = `{script}_AnimationFromString_{math.random()}`
+			Animation.Name = `{script}_AnimationFromString_{AnimationData}`
 			Animation.AnimationId = AnimationLink
 			--Animation.Parent = game:GetService(`Lighting`) -- Testing
 			AnimationData.ID = AnimationLink
@@ -317,7 +318,7 @@ do type([[ LOCAL UTILS ]])
 			local AnimationLink = `rbxassetid://{string.gsub(`{(AnimationData :: Animation).AnimationId}`, "%D", "")}`
 			local AnimationData = setmetatable({} :: BetterAnimate_AnimationData, AnimationDataMeta)
 			local Animation = Instance.new(`Animation`)
-			Animation.Name = `{script}_AnimationFromInstance_{math.random()}`
+			Animation.Name = `{script}_AnimationFromInstance_{AnimationData}`
 			Animation.AnimationId = AnimationLink
 			--Animation.Parent = game:GetService(`Lighting`) -- Testing
 			AnimationData.ID = AnimationLink
@@ -357,16 +358,8 @@ do type([[ BETTERANIMATE ]])
 		BetterAnimate.Trove = nil :: Trove -- If you want to attach something
 
 		BetterAnimate.Events = nil :: {
-			--[[Hiiii]]
-			NewMoveDirection: Unlim_Bindable,
-			NewState: Unlim_Bindable,
-			NewAnimation: Unlim_Bindable,
-
 			--[[KeyframeReached == MarkerReached]]
-			KeyframeReached: Unlim_Bindable,
-			MarkerReached: Unlim_Bindable,
-
-			--[BetterAnimate_EventNames]: Unlim_Bindable,
+			[BetterAnimate_EventNames]: Unlim_Bindable,
 		}
 
 		BetterAnimate.FastConfig = nil :: { -- Like FFlag to fix something
@@ -834,6 +827,14 @@ do type([[ BETTERANIMATE ]])
 					function AnimationManager.GetIsPlaying(self: AnimationManager)
 						return self._AnimationTrack.IsPlaying
 					end
+					
+					function AnimationManager.GetPrority(self: AnimationManager)
+						return self._AnimationTrack.Priority
+					end
+					
+					function AnimationManager.GetLooped(self: AnimationManager)
+						return self._AnimationTrack.Looped
+					end
 				end
 				
 				do type([[ SET ]])
@@ -933,13 +934,13 @@ do type([[ BETTERANIMATE ]])
 				end
 				
 				ManagerTrove:Add(AnimationTrack.DidLoop:Connect(function()
-					if Manager._DidLoopMethod then
+					if type(Manager._DidLoopMethod) == `function` then
 						Manager._DidLoopMethod()
 					end
 				end))
 				
 				ManagerTrove:Add(AnimationTrack.Ended:Connect(function()
-					if Manager._EndedMethod then
+					if type(Manager._EndedMethod) == `function` then
 						Manager._EndedMethod()
 					end
 				end))
@@ -954,11 +955,13 @@ do type([[ BETTERANIMATE ]])
 				This function is used to add/override/remove animation
 			]]
 			function BetterAnimate.AddAnimation(self: BetterAnimate, Class: BetterAnimate_AnimationClasses, Index: any?, AnimationData: BetterAnimate_AnimationData | string | number | Animation)
-
-				local ClassAnimations = self._Class.Animations[Class]
+				
+				
+				local _Class = self._Class
+				local ClassAnimations = _Class.Animations[Class]
 				if not ClassAnimations then
 					ClassAnimations = {}
-					self._Class.Animations[Class] = ClassAnimations
+					_Class.Animations[Class] = ClassAnimations
 				end
 
 				if AnimationData then
@@ -976,13 +979,16 @@ do type([[ BETTERANIMATE ]])
 						ClassAnimations[Index] = AnimationData
 
 						if Index == self._Animation.CurrentIndex 
-							or (Class == self._Class.Current and Utils.GetTableLength(ClassAnimations) == 0)
+							or (
+								--Class == self._Class.Current and
+									Utils.GetTableLength(ClassAnimations) == 0
+							)
 						then
-							if self._Class.Timer[Class] then
-								self._Class.Timer[Class] = 0
+							if _Class.Timer[Class] then
+								_Class.Timer[Class] = 0
 							end
 
-							self:PlayClassAnimation(Class)
+							--self:PlayClassAnimation(Class)
 						end
 					else
 						ClassAnimations[Index] = nil
@@ -1119,7 +1125,7 @@ do type([[ BETTERANIMATE ]])
 			--[[
 				Play random Class animation
 			]]
-			function BetterAnimate.PlayClassAnimation(self: BetterAnimate, Class: BetterAnimate_AnimationClasses, TransitionTime: number?)
+			function BetterAnimate.PlayClassAnimation(self: BetterAnimate, Class: BetterAnimate_AnimationClasses, TransitionTime: number?, IgnoreTimer: number?)
 
 				local ClassTimerMax = self._Class.TimerMax
 				local ClassTimer = self._Class.Timer
@@ -1130,7 +1136,7 @@ do type([[ BETTERANIMATE ]])
 					if ClassTimerMax[Class] then
 
 						if ClassTimer[Class] then
-							if ClassTimer[Class] <= 0 or OldClass ~= Class then
+							if ClassTimer[Class] <= 0 or OldClass ~= Class or IgnoreTimer then
 								ClassTimer[Class] = LocalUtils.GetTime(ClassTimerMax[Class])
 								return self:_SetAnimation(Class, TransitionTime, self:GetRandomClassAnimation(Class))
 							--else
@@ -1177,8 +1183,8 @@ do type([[ BETTERANIMATE ]])
 				StateNew = StateForced or StateNew
 
 				do -- New state event
-					if StateNew ~= StateOld and self._Events_Enabled["NewState"] then
-						local Event = self.Events["NewState"]
+					if StateNew ~= StateOld and self._Events_Enabled.NewState then
+						local Event = self.Events.NewState
 						Event:Fires(StateNew)
 						self._State.Current = StateNew
 					end
@@ -1221,8 +1227,8 @@ do type([[ BETTERANIMATE ]])
 						local Inverse do --Inverse logic
 							local MoveDirection = self:GetLocalMoveDirection()
 							local MoveDirectionName = LocalUtils.GetMoveDirectionName(MoveDirection)
-							if self._MoveDirection ~= MoveDirection and self._Events_Enabled["NewMoveDirection"] then
-								local Event = self.Events["NewMoveDirection"]
+							if self._MoveDirection ~= MoveDirection and self._Events_Enabled.NewMoveDirection then
+								local Event = self.Events.NewMoveDirection
 								Event:Fires(MoveDirection, MoveDirectionName)
 							end
 
@@ -1284,8 +1290,11 @@ do type([[ BETTERANIMATE ]])
 				local AnimationInstance = AnimationData.Instance
 				
 				TransitionTime = TransitionTime or self.FastConfig.AnimationPlayTransition
+				
+				local OldClass = self._Class.Current
 				self._Class.Current = Class
 				self._Animation.CurrentIndex = Index
+				
 				
 				local UpdateAnimation = false
 				
@@ -1299,39 +1308,39 @@ do type([[ BETTERANIMATE ]])
 					or 
 					(CurrentTrack and not CurrentTrack.IsPlaying) 
 				then
-					--print(AnimationInstance, self._Animation.Current--[[, AnimationInstance.AnimationId, self._Animation.Current and self._Animation.Current.AnimationId]])
-					--if CurrentTrack and not CurrentTrack.IsPlaying then
-					--	CurrentTrack:Play(TransitionTime)
-					--	self._Trove.Animation:Add(function(AnimationStopTransition) CurrentTrack:Stop(AnimationStopTransition) end, self.FastConfig.AnimationStopTransition)
-					--else
-						self:StopClassAnimation()
-						--print(2)
-						local AnimationTrack = self._Animator:LoadAnimation(AnimationInstance) :: AnimationTrack --AnimationTable.AnimationTrack
-						AnimationTrack.Priority = self.FastConfig.AnimationPriority
+					self:StopClassAnimation()
+					
+					local AnimationTrove = self._Trove.Animation
+					
+					local AnimationTrack = self._Animator:LoadAnimation(AnimationInstance) :: AnimationTrack --AnimationTable.AnimationTrack
+					AnimationTrack.Priority = self.FastConfig.AnimationPriority
+					
+					self._Animation.Current = AnimationInstance
+					self._Animation.CurrentTrack = AnimationTrack
+					CurrentTrack = AnimationTrack
 
-						self._Animation.Current = AnimationInstance
-						self._Animation.CurrentTrack = AnimationTrack
-						CurrentTrack = AnimationTrack
-
-						--self._Trove.Animation:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
-						self._Trove.Animation:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
-						
-						do -- Markers
-							for Marker in self._Animation.Markers do
-								self._Trove.Animation:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
-									self._Animation.KeyframeFunction(Marker, ...)
-								end))
-							end
+					--self._Trove.Animation:Add(AnimationTrack.Ended:Connect(self._Animation.KeyframeFunction))
+					AnimationTrove:Add(AnimationTrack.KeyframeReached:Connect(self._Animation.KeyframeFunction)) -- Roblox Deprecated this (bruh), but it works
+					
+					do -- Markers
+						for Marker in self._Animation.Markers do
+							AnimationTrove:Add(AnimationTrack:GetMarkerReachedSignal(Marker):Connect(function(...)
+								self._Animation.KeyframeFunction(Marker, ...)
+							end))
 						end
-						
-						self._Trove.Animation:Add(function(AnimationStopTransition) AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.AnimationStopTransition or AnimationStopTransition) end, self.FastConfig.AnimationStopTransition)
-						AnimationTrack:Play(TransitionTime)
+					end
+					
+					AnimationTrove:Add(function(AnimationStopTransition) AnimationTrack:Stop(self.FastConfig.AlwaysUseCurrentTransition and self.FastConfig.AnimationStopTransition or AnimationStopTransition) end, self.FastConfig.AnimationStopTransition)
+					AnimationTrack:Play(TransitionTime)
 
-						if self._Events_Enabled["NewAnimation"] then
-							local Event = self.Events["NewAnimation"]
-							Event:Fires(Class, Index, AnimationData)
-						end
-					--end
+					if self._Events_Enabled.NewAnimation then
+						local Event = self.Events.NewAnimation
+						Event:Fires(Class, Index, AnimationData)
+					end
+				end
+				
+				if OldClass ~= Class and self._Events_Enabled.NewClass then
+					self.Events.NewClass:Fires(Class)
 				end
 
 				return AnimationInstance, CurrentTrack, CurrentTrack and CurrentTrack.Length > 0 and CurrentTrack.Length or self.FastConfig.DefaultAnimationLength
@@ -1344,8 +1353,8 @@ do type([[ BETTERANIMATE ]])
 			]]
 			function BetterAnimate._AnimationEvent(self: BetterAnimate, KeyframeOrMarker: string?, ...: string)
 				if KeyframeOrMarker then
-					if self._Events_Enabled["KeyframeReached"] then
-						local Event = self.Events["KeyframeReached"]
+					if self._Events_Enabled.KeyframeReached then
+						local Event = self.Events.KeyframeReached
 						Event:Fires(KeyframeOrMarker, ...)
 					end
 				end
@@ -1388,6 +1397,7 @@ return table.freeze{
 			NewMoveDirection = CharacterTrove:Add(Unlim_Bindable.New()),
 			NewState = CharacterTrove:Add(Unlim_Bindable.New()),
 			NewAnimation = CharacterTrove:Add(Unlim_Bindable.New()),
+			NewClass = CharacterTrove:Add(Unlim_Bindable.New()),
 			KeyframeReached = MarkerReached,
 			MarkerReached = MarkerReached,
 		}
